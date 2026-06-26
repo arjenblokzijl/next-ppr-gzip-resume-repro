@@ -92,10 +92,22 @@ production log. The code-path trace below is the rest of the evidence.
 
 ## Suggested fix
 
-In the resume-body read path (`base-server.js` /
-`readBodyWithSizeLimit`), honor `Content-Encoding: gzip|br|deflate` and
-decompress before `toString("utf8")` — mirroring how the
-`renderResumeDataCache` portion is already gunzipped downstream.
+In the resume-body read path (`base-server.js`), decompress before
+`toString("utf8")` — mirroring how the `renderResumeDataCache` portion is
+already gunzipped downstream.
+
+Note the PPR resume "chain" contract emitted by the build
+(`generate-routes-manifest.ts` / `build-complete.ts`) only sets
+`{ headers: { 'next-resume': '1' } }` — it carries **no `Content-Encoding`**,
+and nothing in the OSS tree gzips the resume body. The compression is applied
+by the infrastructure that issues the chained resume request (e.g. Vercel's
+router), so a fix that relies solely on a forwarded `Content-Encoding` header
+may be a no-op in production. A robust fix honors `Content-Encoding` when
+present **and** detects the leading gzip magic number (`0x1f 0x8b`) when it is
+not — which is safe because a valid serialized postponed state always begins
+with `<len>:` (`0x30`–`0x3a`), so there is no overlap.
+
+A candidate patch implementing exactly this is in the linked PR.
 
 ## Workaround
 
