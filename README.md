@@ -25,7 +25,13 @@ legitimate resume body.
 
 ## Affected
 
-- Next `16.3.0-preview.5` (also reproduces on `16.3.0-canary.*`), `cacheComponents: true`.
+- **Not a regression — pre-existing.** The resume-body read path
+  (`base-server.js` `body.toString('utf8')` with no `Content-Encoding`
+  decompression) is **byte-for-byte identical in `16.2.6` and `16.3`**, so this
+  reproduces on both. This repo pins `16.3.0-preview.5` (also `16.3.0-canary.*`)
+  for convenience; the same code path exists in the 16.2.x line.
+- Requires `cacheComponents: true` (PPR) and a route that produces a postponed
+  state (`◐ Partial Prerender`).
 - Only manifests where the resume body is gzip-encoded — i.e. **minimal mode**
   (what Vercel runs). Plain `next start` resumes in-process and never decodes a
   request body, which is why it does not reproduce locally by default.
